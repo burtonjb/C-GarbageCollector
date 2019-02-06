@@ -4,6 +4,10 @@
 #include "gc.h"
 
 void printObject(Object *object) {
+  if (object == NULL) {
+    printf("NULL ");
+    return;
+  }
   if (object->marked == TRUE) {
     printf("*");
   }
@@ -21,7 +25,14 @@ void printObject(Object *object) {
     printObject(object->tail);
     printf(") ");
   } else if (object->objectType == ARRAY) {
-    printf("TODO!");
+    printf("[ %d: ", object->size);
+    for (int i = 0; i < object->size; i++) {
+      printObject(object->objects[i]);
+    }
+    printf(" ] ");
+  } else {
+    printf("Unknown case while printing object, throwing");
+    assert(1 == 0); // Throw an error
   }
 }
 Object *newObject(VM *vm, ObjectType objectType) {
@@ -46,6 +57,15 @@ Object *newFrameMarker(VM *vm) {
   Object *object = newObject(vm, FRAME_MARKER);
   return object;
 }
+Object *newArray(VM *vm, int size, Object *objectToFill) {
+  Object *object = newObject(vm, ARRAY);
+  object->size = size;
+  object->objects = malloc(size * sizeof(Object));
+  for (int i = 0; i < size; i++) {
+    object->objects[i] = objectToFill;
+  }
+  return object;
+}
 
 ObjectLinkedList *appendObject(ObjectLinkedList *tail, Object *object) {
   ObjectLinkedList *ll = malloc(sizeof(ObjectLinkedList));
@@ -58,6 +78,9 @@ ObjectLinkedList *appendObject(ObjectLinkedList *tail, Object *object) {
 VM *newVM() {
   VM *vm = malloc(sizeof(VM));
   vm->stackSize = 0;
+  for (int i = 0; i < MAX_STACK_SIZE; i++) {
+    vm->stack[i] = NULL;
+  }
 
   Object *object = malloc(sizeof(Object));
   object->objectType = START_OF_STACK;
@@ -70,6 +93,11 @@ VM *newVM() {
   vm->head = ll;
   vm->stack[vm->stackSize] = object;
   vm->stackSize++;
+}
+void deleteVM(VM *vm) {
+  vm->stackSize = 0;
+  sweep(vm);
+  free(vm);
 }
 void pushToVM(VM *vm, Object *object) {
   vm->stack[vm->stackSize] = object;
@@ -103,12 +131,18 @@ void popFrame(VM *vm) {
 /* Actual garbage collection stuff here */
 /* Mark section of the mark and sweep algorithm */
 void mark(Object *object) {
+  if (object == NULL)
+    return; // just return on null objects
   if (object->marked == 1)
-    return; //handle cycles, just exit
+    return; // handle cycles, just exit
   object->marked = 1;
   if (object->objectType == REFERENCE_PAIR) {
     mark(object->head);
     mark(object->tail);
+  } else if (object->objectType == ARRAY) {
+    for (int i = 0; i < object->size; i++) {
+      mark(object->objects[i]);
+    }
   }
 }
 void markAll(VM *vm) {
@@ -117,8 +151,8 @@ void markAll(VM *vm) {
   }
 }
 
-/* sweep section of the mark and sweep algorith. Removes anything that has not been marked
-and unmarks anything marked */
+/* sweep section of the mark and sweep algorith. Removes anything that has not
+been marked and unmarks anything marked */
 void sweep(VM *vm) {
   ObjectLinkedList *prev = vm->head;
   ObjectLinkedList *current = prev->next;
@@ -127,16 +161,15 @@ void sweep(VM *vm) {
       prev->next = current->next;
       free(current);
       current = prev->next;
-    }
-    else {
-      current->object->marked = 0; //unmark the object for the next mark&sweep pass
+    } else {
+      current->object->marked = 0; // unmark the object for the next pass
       prev = current;
       current = current->next;
     }
   }
 }
 
-void gc(VM* vm) {
+void gc(VM *vm) {
   markAll(vm);
   sweep(vm);
 }

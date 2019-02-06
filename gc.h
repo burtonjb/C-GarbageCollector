@@ -30,7 +30,10 @@ typedef struct object {
     };
 
     // Array
-    struct object **array;
+    struct {
+      int size;
+      struct object **objects;
+    };
   };
 } Object;
 
@@ -56,20 +59,22 @@ typedef struct {
 } VM;
 
 VM *newVM();
+void deleteVM();
 void pushToVM(VM *vm, Object *object);
 Object *popFromVM(VM *vm);
 
 Object *newInt(VM *vm, int value);
 Object *newReferencePair(VM *vm, Object *head, Object *tail);
+Object *newArray(VM *vm, int size, Object *objectToFill);
 
 /* Methods to simulate calling a function or returning from a function */
 void pushFrame(VM *vm); // Adds a frame object to the stack
-void popFrame(VM *vm); // Removes items from the stack until a frame object is
-                       // reached (and pops off that frame object)
+void popFrame(VM *vm);  // Removes items from the stack until a frame object is
+                        // reached (and pops off that frame object)
 
 void mark(Object *object);
 void markAll(VM *vm);
 void sweep(VM *vm);
-void gc(VM* vm);
+void gc(VM *vm);
 
 #endif

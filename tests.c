@@ -4,12 +4,15 @@
 
 void printTestCase(char *s) { printf("Starting test case: %s\n", s); }
 
-void printEndTestCase() { printf("\n====\n\n\n"); }
+void endTestCase(VM *vm) {
+  deleteVM(vm);
+  printf("\n====\n\n\n");
+}
 
 void testNewVM() {
   printTestCase("Initializing VM");
-  newVM();
-  printEndTestCase();
+  VM *vm = newVM();
+  endTestCase(vm);
 }
 
 void testNewInt() {
@@ -18,7 +21,7 @@ void testNewInt() {
   Object *o = newInt(vm, 7);
   printObject(o);
   assert(o->value == 7);
-  printEndTestCase();
+  endTestCase(vm);
 }
 
 void testNewPair() {
@@ -28,7 +31,7 @@ void testNewPair() {
   Object *tail = newInt(vm, 2);
   Object *o = newReferencePair(vm, head, tail);
   printObject(o);
-  printEndTestCase();
+  endTestCase(vm);
 }
 
 void testNewPair_Reference() {
@@ -39,7 +42,20 @@ void testNewPair_Reference() {
   Object *mid = newReferencePair(vm, head, tail);
   Object *o = newReferencePair(vm, head, mid);
   printObject(o);
-  printEndTestCase();
+  endTestCase(vm);
+}
+
+void testNewArray() {
+  printTestCase("New array test");
+  VM *vm = newVM();
+  Object *head = newInt(vm, 0);
+  Object *array = newArray(vm, 5, head);
+  printObject(array);
+  printf("\n");
+  Object *new = newInt(vm, 6);
+  array->objects[3] = new;
+  printObject(array);
+  endTestCase(vm);
 }
 
 void testVmStackTests() {
@@ -54,7 +70,7 @@ void testVmStackTests() {
   for (int i = 0; i < vm->stackSize; i++) {
     printObject(vm->stack[i]);
   }
-  printEndTestCase();
+  endTestCase(vm);
 }
 
 void testVmLinkedList() {
@@ -76,7 +92,7 @@ void testVmLinkedList() {
   }
   assert(4 == counter); // even though the stack size is 2 make sure that
   // there are 3 items in the linked list
-  printEndTestCase();
+  endTestCase(vm);
 }
 
 void testFrameMarkers() {
@@ -106,7 +122,7 @@ void testFrameMarkers() {
     printObject(vm->stack[i]);
   }
   printf("\n");
-  printEndTestCase();
+  endTestCase(vm);
 }
 
 void testMark() {
@@ -127,7 +143,7 @@ void testMark() {
   }
   assert(3 == counter);
 
-  printEndTestCase();
+  endTestCase(vm);
 }
 
 void testMarkAndSweep() {
@@ -147,7 +163,7 @@ void testMarkAndSweep() {
   }
   assert(3 == counter);
   printf("\n");
-  
+
   sweep(vm);
 
   counter = 0;
@@ -159,17 +175,64 @@ void testMarkAndSweep() {
   }
   assert(2 == counter);
 
-  printEndTestCase();
+  endTestCase(vm);
 }
+
+void testMarkAndSweepWithArray() {
+  printTestCase("Testing mark algo with an array object");
+  VM *vm = newVM();
+  Object *i1 = newInt(vm, 1);
+  popFromVM(vm);
+  Object *i2 = newInt(vm, 2);
+  popFromVM(vm);
+  Object *i3 = newInt(vm, 3);
+  popFromVM(vm);
+  Object *i4 = newInt(vm, 4);
+  popFromVM(vm);
+  Object *a = newArray(vm, 3, NULL);
+  assert(2 == vm->stackSize);
+  a->objects[0] = i1;
+  a->objects[1] = i2;
+  a->objects[2] = i3;
+  markAll(vm);
+  int counter = 0;
+  ObjectLinkedList *current = vm->head;
+  while (current != NULL) {
+    counter += 1;
+    printObject(current->object);
+    current = current->next;
+  }
+  printf("\n");
+  assert(6 == counter);
+  sweep(vm);
+
+  counter = 0;
+  current = vm->head;
+  while (current != NULL) {
+    counter += 1;
+    printObject(current->object);
+    current = current->next;
+  }
+  assert(5 == counter);
+
+  endTestCase(vm);
+}
+
+// TODO test cases:
+// test sweep on an array that is out of scope
+// test cases on cycles (both reference and array)
+// full test cases with call to gc instead of markAll + sweep
 
 int main() {
   testNewVM();
   testNewInt();
   testNewPair();
   testNewPair_Reference();
+  testNewArray();
   testVmStackTests();
   testVmLinkedList();
   testFrameMarkers();
   testMark();
   testMarkAndSweep();
+  testMarkAndSweepWithArray();
 }
