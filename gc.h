@@ -67,4 +67,9 @@ void pushFrame(VM *vm); // Adds a frame object to the stack
 void popFrame(VM *vm); // Removes items from the stack until a frame object is
                        // reached (and pops off that frame object)
 
+void mark(Object *object);
+void markAll(VM *vm);
+void sweep(VM *vm);
+void gc(VM* vm);
+
 #endif

@@ -109,6 +109,59 @@ void testFrameMarkers() {
   printEndTestCase();
 }
 
+void testMark() {
+  printTestCase("Test mark algorithm");
+  VM *vm = newVM();
+  Object *o1 = newInt(vm, 1);
+  Object *o2 = newInt(vm, 2);
+  popFromVM(vm);
+  markAll(vm);
+  assert(2 == vm->stackSize);
+
+  int counter = 0;
+  ObjectLinkedList *current = vm->head;
+  while (current != NULL) {
+    counter += 1;
+    printObject(current->object);
+    current = current->next;
+  }
+  assert(3 == counter);
+
+  printEndTestCase();
+}
+
+void testMarkAndSweep() {
+  printTestCase("Test mark and then sweep algorithm");
+  VM *vm = newVM();
+  Object *o1 = newInt(vm, 1);
+  Object *o2 = newInt(vm, 2);
+  popFromVM(vm);
+  markAll(vm);
+  assert(2 == vm->stackSize);
+  int counter = 0;
+  ObjectLinkedList *current = vm->head;
+  while (current != NULL) {
+    counter += 1;
+    printObject(current->object);
+    current = current->next;
+  }
+  assert(3 == counter);
+  printf("\n");
+  
+  sweep(vm);
+
+  counter = 0;
+  current = vm->head;
+  while (current != NULL) {
+    counter += 1;
+    printObject(current->object);
+    current = current->next;
+  }
+  assert(2 == counter);
+
+  printEndTestCase();
+}
+
 int main() {
   testNewVM();
   testNewInt();
@@ -117,4 +170,6 @@ int main() {
   testVmStackTests();
   testVmLinkedList();
   testFrameMarkers();
+  testMark();
+  testMarkAndSweep();
 }

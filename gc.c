@@ -100,7 +100,47 @@ void popFrame(VM *vm) {
   }
 }
 
-//
+/* Actual garbage collection stuff here */
+/* Mark section of the mark and sweep algorithm */
+void mark(Object *object) {
+  if (object->marked == 1)
+    return; //handle cycles, just exit
+  object->marked = 1;
+  if (object->objectType == REFERENCE_PAIR) {
+    mark(object->head);
+    mark(object->tail);
+  }
+}
+void markAll(VM *vm) {
+  for (int i = 0; i < vm->stackSize; i++) {
+    mark(vm->stack[i]);
+  }
+}
+
+/* sweep section of the mark and sweep algorith. Removes anything that has not been marked
+and unmarks anything marked */
+void sweep(VM *vm) {
+  ObjectLinkedList *prev = vm->head;
+  ObjectLinkedList *current = prev->next;
+  while (current != NULL) {
+    if (current->object->marked == 0) {
+      prev->next = current->next;
+      free(current);
+      current = prev->next;
+    }
+    else {
+      current->object->marked = 0; //unmark the object for the next mark&sweep pass
+      prev = current;
+      current = current->next;
+    }
+  }
+}
+
+void gc(VM* vm) {
+  markAll(vm);
+  sweep(vm);
+}
+
 // int main() {
 //   return 0;
 // }
