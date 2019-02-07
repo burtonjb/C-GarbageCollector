@@ -9,6 +9,27 @@ void endTestCase(VM *vm) {
   printf("\n====\n\n\n");
 }
 
+int getTotalObjects(VM *vm) {
+  int counter = 0;
+  ObjectLinkedList *current = vm->head;
+  while (current != NULL) {
+    counter += 1;
+    printObject(current->object);
+    current = current->next;
+  }
+  return counter;
+}
+
+int getTotalObjectsWithoutPrinting(VM *vm) {
+  int counter = 0;
+  ObjectLinkedList *current = vm->head;
+  while (current != NULL) {
+    counter += 1;
+    current = current->next;
+  }
+  return counter;
+}
+
 void testNewVM() {
   printTestCase("Initializing VM");
   VM *vm = newVM();
@@ -220,8 +241,72 @@ void testMarkAndSweepWithArray() {
 
 // TODO test cases:
 // test sweep on an array that is out of scope
+void testSweepOnArrayOutOfScope() {
+  printTestCase("Remove out of scope array");
+  VM *vm = newVM();
+  Object *i1 = newInt(vm, 1);
+  Object *a = newArray(vm, 3, i1);
+  assert(3 == vm->stackSize);
+  popFromVM(vm);
+  markAll(vm);
+  assert(3 == getTotalObjects(vm));
+  printObject(a);
+  sweep(vm);
+  assert(2 == vm->stackSize);
+  assert(2 == getTotalObjects(vm));
+  endTestCase(vm);
+}
+
 // test cases on cycles (both reference and array)
-// full test cases with call to gc instead of markAll + sweep
+void testSweepOnCycle() {
+  printTestCase("Testing sweep on cycle");
+  VM *vm = newVM();
+  Object *r1 = newReferencePair(vm, NULL, NULL);
+  Object *r2 = newReferencePair(vm, NULL, NULL);
+  r1->head = r2;
+  r2->head = r1;
+  markAll(vm);
+  sweep(vm);
+  assert(3 == vm->stackSize);
+  assert(3 == getTotalObjectsWithoutPrinting(vm));
+  endTestCase(vm);
+}
+
+void testSweepOnArrayCycle() {
+  printTestCase("Testing sweep on array cycle");
+  VM *vm = newVM();
+  Object *a1 = newArray(vm, 1, NULL);
+  Object *a2 = newArray(vm, 1, NULL);
+  a1->objects[0] = a2;
+  a2->objects[0] = a1;
+  markAll(vm);
+  sweep(vm);
+  assert(3 == vm->stackSize);
+  assert(3 == getTotalObjectsWithoutPrinting(vm));
+  endTestCase(vm);
+}
+
+void testGC() {
+  printTestCase("Testing GC method call");
+  VM *vm = newVM();
+  newInt(vm, 0);
+  newInt(vm, 1);
+  newInt(vm, 2);
+  assert(4 == vm->stackSize);
+  popFromVM(vm);
+  assert(3 == vm->stackSize);
+  assert(4 == getTotalObjects(vm));
+  printf("\n");
+  gc(vm); // the GC method call is just markAll() and then sweep()
+  assert(3 == vm->stackSize);
+  assert(3 == getTotalObjects(vm));
+  endTestCase(vm);
+}
+
+// other TODOS
+// fix the valgrind errors. The last element of the list of objects is unitialized
+// fix the build.sh script to an actual make file
+// Add a readme with an explanation of what the code does.
 
 int main() {
   testNewVM();
@@ -235,4 +320,8 @@ int main() {
   testMark();
   testMarkAndSweep();
   testMarkAndSweepWithArray();
+  testSweepOnArrayOutOfScope();
+  testSweepOnCycle();
+  testSweepOnArrayCycle();
+  testGC();
 }
