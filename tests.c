@@ -304,7 +304,8 @@ void testGC() {
 }
 
 // other TODOS
-// fix the valgrind errors. The last element of the list of objects is unitialized
+// fix the valgrind errors. The last element of the list of objects is
+// unitialized
 // fix the build.sh script to an actual make file
 // Add a readme with an explanation of what the code does.
 
